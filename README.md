@@ -14,3 +14,4 @@
   - Some trips have an average speed faster than 100 miles per hour. There is no way that this is possible on an electric scooter. This is likely a result of the errors in distance or duration mentioned above. 
   - End_time and start_time variables do not have capture seconds (all seconds are 00). While the duration variable is in seconds. Durations do not match end_time minus start_time (it is close, but not exact). 
   - Some trips have end_time values that equal the start_time values, but have durations that are not zero!
+2. It is hard to visualize distributions and/or challenging to make nice looking ridge plots.
