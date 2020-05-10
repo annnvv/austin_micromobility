@@ -9,14 +9,6 @@
   
   df <- readr::read_rds("03_clean_data/austin_mm_april_scooters_clean.rds")
   
-  # clean up census_geoid vars a bit
-  df$census_geoid_end[df$census_geoid_end == "None"] <- NA
-  df$census_geoid_end[df$census_geoid_end == "0"] <- NA
-  df$census_geoid_end[df$census_geoid_end == "OUT_OF_BOUNDS"] <- NA
-  
-  df$census_geoid_start[df$census_geoid_start == "0"] <- NA
-  df$census_geoid_start[df$census_geoid_start == "OUT_OF_BOUNDS"] <- NA
-  
   ## collapse number of trips by census tract start/end combos in 2020
   census_tract_2020 <- df %>% 
     filter(year == 2020) %>% 
@@ -33,7 +25,7 @@
 
   ##download 2010 census tracts from the tigris package for Travis County, Texas
   travis_tracts <- tigris::tracts(state = "TX", county = "travis", year = 2010) #2010 specified by data  
-  plot(travis_tracts)
+  plot(travis_tracts) #don't think I'll need all of these
   
   str(travis_tracts@data)
   names(travis_tracts)
@@ -92,21 +84,24 @@
     setView(lng = -97.74266, lat = 30.26648, zoom = 13) %>% 
     addProviderTiles(providers$CartoDB.Positron) %>%
     addPolygons(data = travis_tracts_uniq, fillOpacity = 0, 
-                color = "darkgray", weight = 1, opacity = 0.5,
+                color = "darkgray", weight = 1, opacity = 0.5, 
                 label = ~GEOID10,
-                labelOptions = labelOptions(noHide = T, 
-                                            textOnly = TRUE, 
-                                            textsize = "6px", 
-                                            direction = "bottom")) %>% 
-    addPolylines(weight = ~log10(num_trips), color = "sienna", opacity = 0.5,
+                labelOptions = labelOptions(noHide = T, direction = "bottom",
+                                            textOnly = TRUE, textsize = "7px", 
+                                            color = "darkgray")) %>% 
+    
+    addPolylines(weight = ~log10(num_trips), 
+                 color = "limegreen", opacity = 0.5,
                  highlightOptions = c(color = "turquoise", bringToFront = TRUE)) %>%
+    
     addCircleMarkers(lng = ~s_long10, lat = ~s_lat10,
-                     color = "green", opacity = 0.5, 
+                     color = "yellow", opacity = 1, 
                      radius = 1.5, popup = ~census_geoid_start) %>%
     addCircleMarkers(lng = ~e_long10, lat = ~e_lat10,
-                     color = "red", opacity = 0.5, 
+                     color = "blue", opacity = 0.5, 
                      radius = 0.5, popup = ~census_geoid_end) %>%
-    addLegend(colors = c("green", "red"), labels = c("Journey start", "Journey end"))  
+    
+    addLegend(colors = c("yellow", "blue"), labels = c("Trip start", "Trip end"))  
    
   #build out a shiny map: https://stackoverflow.com/questions/48781380/shiny-how-to-highlight-an-object-on-a-leaflet-map-when-selecting-a-record-in-a
   
