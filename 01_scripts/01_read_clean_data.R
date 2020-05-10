@@ -1,4 +1,3 @@
- 
   library(readr)
   library(tibble)
   library(dplyr)
@@ -102,7 +101,7 @@
       trip_ave_speed_mph = round((trip_distance*0.000621371)/(trip_dur_min/60), 4),
       stayed_same_census = ifelse(census_geoid_start == census_geoid_end, 1, 0)
     ) %>% 
-    select(-day_of_week, -census_geoid_start, -census_geoid_end)
+    select(-day_of_week) #, -census_geoid_start, -census_geoid_end
   
   #create a weekend variable
   scooters_clean2$weekend <- NA
@@ -114,6 +113,14 @@
   summary(scooters_clean2$trip_ave_speed_mph)
   scooters_clean2$trip_ave_speed_mph[scooters_clean2$trip_ave_speed_mph >= 55] <- NA 
   hist(scooters_clean2$trip_ave_speed_mph)
+  
+  # clean up census_geoid vars a bit
+  scooters_clean2$census_geoid_end[scooters_clean2$census_geoid_end == "None"] <- ""
+  scooters_clean2$census_geoid_end[scooters_clean2$census_geoid_end == "0"] <- ""
+  scooters_clean2$census_geoid_end[scooters_clean2$census_geoid_end == "OUT_OF_BOUNDS"] <- ""
+  
+  scooters_clean2$census_geoid_start[scooters_clean2$census_geoid_start == "0"] <- ""
+  scooters_clean2$census_geoid_start[scooters_clean2$census_geoid_start == "OUT_OF_BOUNDS"] <- ""
   
   write_rds(scooters_clean2, "03_clean_data/austin_mm_april_scooters_clean.rds") 
   
