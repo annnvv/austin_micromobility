@@ -1,0 +1,127 @@
+---
+title: "Number of scooter trips by hour in Austin, TX"
+author: "Anna Vasylytsya"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+  html_document:
+    code_folding: hide
+params:
+  month_num: 4
+  month_str: "April"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, error = FALSE, warning = FALSE)
+```
+
+```{r load_packages}
+library(readr)
+library(tibble)
+library(dplyr)
+```
+
+# Download and preview the raw data for `r params$month_str`
+```{r get_data}
+config <- config::get(file = "../00_config/config.yml", use_parent = FALSE)
+
+raw <- RSocrata::read.socrata(paste0("https://data.austintexas.gov/resource/7d8e-dm7r.csv?month=", 
+                                     params$month_num, "&vehicle_type=scooter"),
+                              app_token = config$app_token,
+                              email     = config$email,
+                              password  = config$password,
+                              stringsAsFactors = FALSE
+                            )
+raw <- dplyr::as_tibble(raw)
+```
+
+```{r glimpse}
+raw %>% 
+  tibble::glimpse()
+```
+
+# Clean the data
+```{r clean_data}
+scooters_clean <- raw
+# drop trips where there are no durations and no distances!
+# table(scooters_clean$trip_duration == 0 & scooters_clean$trip_distance == 0)
+scooters_clean <- scooters_clean[raw$trip_duration != 0 & raw$trip_distance != 0, ]
+
+##make NA an trip that was longer than 24 hours
+scooters_clean$trip_duration[scooters_clean$trip_duration > 24*60*60] <- NA
+##make NA any trip that had a distance less than zero or more than 500 miles 
+scooters_clean$trip_distance[scooters_clean$trip_distance < 0] <- NA
+scooters_clean$trip_distance[scooters_clean$trip_distance >= 500*1609.34] <- NA
+
+# generate several vars and remove unncessary ones
+scooters_clean <- scooters_clean %>%
+  select(-vehicle_type,  -council_district_start, -council_district_end,
+         -modified_date,
+         -device_id) %>% 
+  mutate(
+    day_of_month = substr(start_time, 9, 10),
+    day_of_week_str = weekdays(start_time, abbreviate = FALSE),
+    trip_dur_min = round(trip_duration/60, 4),
+    trip_dist_mi = round(trip_distance*0.000621371, 4), 
+    trip_ave_speed_mph = round((trip_distance*0.000621371)/(trip_dur_min/60), 4),
+    stayed_same_census = ifelse(census_geoid_start == census_geoid_end, 1, 0)
+  ) %>% 
+  select(-day_of_week) #, -census_geoid_start, -census_geoid_end
+
+#create a weekend variable
+scooters_clean$weekend <- NA
+scooters_clean$weekend[scooters_clean$day_of_week_str == "Saturday" | scooters_clean$day_of_week_str == "Sunday"] <- 1
+scooters_clean$weekend[is.na(scooters_clean$weekend)] <- 0
+# table(scooters_clean$day_of_week_str, scooters_clean$weekend)
+
+# clean up average speed var (make any speed more than 55 mph NA, any faster is implausable on a scooter)
+# summary(scooters_clean$trip_ave_speed_mph)
+scooters_clean$trip_ave_speed_mph[scooters_clean$trip_ave_speed_mph >= 55] <- NA 
+# hist(scooters_clean$trip_ave_speed_mph)
+
+# clean up census_geoid vars a bit
+scooters_clean$census_geoid_end[scooters_clean$census_geoid_end == "None"] <- ""
+scooters_clean$census_geoid_end[scooters_clean$census_geoid_end == "0"] <- ""
+scooters_clean$census_geoid_end[scooters_clean$census_geoid_end == "OUT_OF_BOUNDS"] <- ""
+
+scooters_clean$census_geoid_start[scooters_clean$census_geoid_start == "0"] <- ""
+scooters_clean$census_geoid_start[scooters_clean$census_geoid_start == "OUT_OF_BOUNDS"] <- ""
+```
+
+# Visualize the data: Number of Scooter Trips by Hour `r params$month_str`
+
+```{r col_palettes}
+col3 <- c("2018" = "#00B140", #Dark cyan - lime green
+          "2019" = "#003594", #Dark blue
+          "2020" = "#BF0D3E"  #Strong pink
+)
+```
+
+```{r count_by_hour}
+data_src <- "Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/"
+loc <- "Location: Austin, TX"
+mo_levels = c("April", "May", "June", "July", "August")
+
+count_by_hour <- scooters_clean %>% 
+  group_by(year, params$month_str, hour) %>% 
+  summarise(count = n()) %>% 
+  mutate(month = factor(params$month_str, levels = mo_levels)) %>% 
+  arrange(hour, month, year) 
+    
+count_by_hour <- count_by_hour[count_by_hour$month == params$month_str, ]
+```
+
+```{r count_by_hour_plt, fig.height = 14, fig.width = 18}
+ggplot(count_by_hour, 
+         aes(x = hour, y = count, fill = as.character(year))) +
+    geom_col() +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+    facet_wrap(vars(year), nrow = 3, scales = "free_y") +
+    labs(title = paste0("Number of Scooter Trips by Hour - in ", params$month_str," by Year"), 
+         subtitle = loc,     
+         caption = data_src) +
+    ylab("Number of Scooter Trips") +
+    xlab("Hour of day [0-23]") +
+    scale_x_continuous(breaks = seq(0, 23, 1)) +
+    scale_fill_manual(values = col3, guide = FALSE)
+```
+
