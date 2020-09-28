@@ -1,0 +1,264 @@
+---
+title: "Austin, TX: Micromobility - Scooter Analysis"
+author: "Anna Vasylytsya"
+date: "2020-05-04"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+# My Motivation
+
+I have been interested in exploring the [micromobility data](https://data.austintexas.gov/Transportation-and-Mobility/Shared-Micromobility-Vehicle-Trips/7d8e-dm7r) the the City of Austin, TX provides on its [open data portal](https://data.austintexas.gov). I was particularly excited because they provide an API through which to access the micromobility data. 
+
+As of May 4th, 2020, there are over nine million observations in their micromobility dataset and the dataset gets updated each day. There is data on both bycicles and scooters in this dataset. I chose to focus on scooters because they represent the majority of the data.
+
+Additionally, I am curious about how much the pandemic impacted scooter ridership. I hypothesize that ridership would have decreased. 
+
+I downloaded all data on scooter trips in April 2018, April 2019, and April 2020 to see how the number of trips compare across time.  I chose April because the oldest micromobility data begins in April 2018 and the most recent completed month in 2020 is April. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r load_libraries}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
+theme_set(theme_bw())
+```
+
+```{r read_data}
+# df <- readr::read_rds("../03_clean_data/austin_mm_april_scooters_clean.rds")
+# df <- readr::read_rds("../03_clean_data/austin_mm_may_scooters_clean.rds")
+# df <- readr::read_rds("../03_clean_data/austin_mm_june_scooters_clean.rds")
+df <- readr::read_rds("../03_clean_data/austin_mm_july_scooters_clean.rds")
+```
+
+```{r col_pals}
+#color palettes to be used in graphics
+col2 <- c("1" = "#F2A900", #Pure (or mostly pure) orange
+          "0" = "#a2a4a1"  #Silver 
+          )
+col3 <- c("2018" = "#00B140", #Dark cyan - lime green
+          "2019" = "#003594", #Dark blue
+          "2020" = "#BF0D3E"  #Strong pink
+)
+```
+
+```{r objs}
+data_src <- "Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/"
+loc <- "Location: Austin, TX"
+```
+
+# Number of Scooter Trips
+
+## Number of Scooter Trips in April 2018, 2019, 2020
+
+The data suggest that scooters in April 2018 were just being introduced to Austin, TX. Scooter usage was high in April 2019 (about ten times more trips one year later!) and plummeted in April 2020 (likely due to COVID-19 concerns). 
+
+```{r count_by_year}
+count_by_year <- df %>% 
+  # filter(day_of_month != 31) %>% 
+  group_by(year) %>% 
+  summarise(count = n())
+```
+
+```{r plt_count_by_year}
+ggplot(count_by_year, aes(x = year, y = count, fill = as.character(year))) +
+  geom_col() +
+  geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.45, size = 3) +
+  labs(title = "Number of Scooter Trips - in April by Year", 
+       subtitle = loc,
+       caption = data_src) +
+  ylab("Number of Scooter Trips") +
+  xlab("") +
+  scale_fill_manual(values = col3, guide = FALSE)
+
+#av.note: need to fix exponential notation on y-axis
+``` 
+
+## Number of Scooter Trips by Day - in April by Year
+
+```{r count_by_year_day}
+count_by_year_day <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year, month, day_of_month, weekend) %>% 
+  summarise(count = n()) %>% 
+  arrange(year, day_of_month)
+```
+
+```{r plt_count_by_year_day, fig.width = 12, fig.height=8}
+ggplot(count_by_year_day, aes(x = day_of_month, y = count, fill = as.factor(weekend))) +
+  geom_col() +
+  geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+  facet_wrap(vars(year), nrow = 3, scales = "fixed") +
+  labs(title = "Number of Scooter Trips by Day - in April by Year", 
+       subtitle = paste0(loc, " \nSaturday and Sundays are in orange."),
+       caption = data_src) +
+  ylab("Number of Scooter Trips") +
+  xlab("Day of April") +
+  theme(legend.position = "bottom") + 
+  scale_fill_manual(values = col2, labels = c("Weekday", "Weekend"), name = "") +
+  scale_y_continuous(breaks = seq(0, 30000, 5000)) 
+```
+
+## Number of Scooter Trips by Day of Week - in April by Year
+
+In April 2018, the data suggest that riding a scooter on the weekend wasn't a frequent occurance compared to weekdays. 
+
+In April 2019, Fridays and Saturdays were the most popular days to ride a scooter. Wednesdays had the lowest number of trips.
+
+In April 2020, there seems to be a pretty level lack of scooter ridership on any day of the week. Though it should be noted that Fridays received the fewest trips out of all of the days of the week. 
+
+```{r count_dayofweek}
+dow_levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+count_dayofweek <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year, day_of_week_str) %>% 
+  summarise(count = n()) %>% 
+  arrange(year, day_of_week_str) %>% 
+  mutate(day_of_week = factor(day_of_week_str, levels = dow_levels))
+```
+
+```{r plt_count_dayofweek, fig.width = 14 , fig.height = 10}
+ggplot(count_dayofweek, aes(x = day_of_week, y = count, fill = as.character(year))) +
+  geom_col() +
+  geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.5, size = 3) +
+  facet_wrap(vars(year), nrow = 3, scales = "fixed") +
+  labs(title = "Number of Scooter Trips by Day of the Week - in April by Year", 
+       subtitle = loc,
+       caption = data_src) +
+  ylab("Number of Scooter Trips") +
+  xlab("Day of Week") +
+  scale_y_continuous(breaks = seq(0, 1500000, 10000)) + 
+  scale_fill_manual(values = col3, guide = FALSE) 
+
+#av.note: need to fix where Friday annotation is getting cut off
+```
+
+## Number of Scooter Trips by Hour of the Day - in April by Year
+
+In April 2018, the data indicate that noon and 1pm were the most popular for scooter trips (perhaps for lunch trips?).
+
+In April 2020, there seem to be indications that some people use scooters as a means of transport in the evening. The lack of drop-off after 8pm is pretty stark. 
+
+```{r count_by_hour}
+count_by_hour <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year, hour) %>% 
+  summarise(count = n()) %>% 
+  arrange(year, hour)
+```
+
+```{r plt_count_by_hour, fig.width = 14, fig.height = 10}
+ggplot(count_by_hour, aes(x = hour, y = count, fill = as.character(year))) +
+  geom_col() +
+  geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+  facet_wrap(vars(year), nrow = 3, scales = "free_y") +
+  labs(title = "Number of Scooter Trips by Hour - in April by Year", 
+       subtitle = loc,     
+       caption = data_src) +
+  ylab("Number of Scooter Trips") +
+  xlab("Hour of day [0-23]") +
+  # theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_x_continuous(breaks = seq(0, 23, 1)) +
+  scale_fill_manual(values = col3, guide = FALSE) 
+```
+
+Note to self: ridge plots below aren't that exciting/useful. Try to thinking of a better way to convey the findings. Maybe [violin plot](https://datavizcatalogue.com/methods/violin_plot.html)?
+
+# Trip Distance in kilometers
+
+The April 2020 distribution of trip distance looks different from the April 2019 and April 2018 distributions.
+
+```{r ave_dist_by_year}
+dist_by_year <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year) %>% 
+  summarise(count = n(), 
+            mean_dist = round(mean(trip_dist_mi, na.rm = TRUE), 2),
+            median_dist = round(median(trip_dist_mi, na.rm = TRUE), 2))
+
+# print(dist_by_year[ , c(1, 3,4)])
+```
+
+```{r }
+yr_lvsl = c("2020", "2019", "2018")
+
+anno1 <- data.frame(x = 5, y = yr_lvsl,
+                    label = c(paste0("In April 2020, the average trip distance was ", dist_by_year$mean_dist[3], " miles."),
+                              paste0("In April 2019, the average trip distance was ", dist_by_year$mean_dist[2], " miles."),
+                              paste0("In April 2018, the average trip distance was ", dist_by_year$mean_dist[1], " miles.")
+                              ))
+```
+
+```{r plt_ave_dist_by_year, fig.width = 10}
+ggplot(df[(df$trip_dist_mi <= 6.21371), ], aes(x = trip_dist_mi, 
+                                        y = factor(year, levels = yr_lvsl), 
+                                        fill = factor(year, levels = yr_lvsl))) + 
+  geom_density_ridges(na.rm = TRUE, alpha = 0.85) +
+  labs(title = "Distribution of Distance Traveled on Scooter Trips - in April by Year", 
+     subtitle = paste0(loc, "\nTrips with distances of less than 6 miles are not displayed."),
+     caption = data_src) +
+  ylab("") +
+  xlab("Trip Distance in miles") +
+  scale_fill_manual(values = col3, guide = FALSE) +
+  annotate("text", label = anno1$label, x = anno1$x, y = anno1$y, vjust = -4.5) 
+  
+#av.note: Need to remove NA
+```
+
+# Trip Duration
+
+```{r dur_by_year}
+dur_by_year <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year) %>% 
+  summarise(count = n(), 
+            mean_dur = round(mean(trip_dur_min, na.rm = TRUE), 2),
+            median_dur = round(median(trip_dur_min, na.rm = TRUE), 2))
+```
+
+```{r plt_dur_by_year}
+ggplot(df[(df$trip_dur_min <= 30), ], aes(x = trip_dur_min, 
+                                        y = factor(year, levels = yr_lvsl), 
+                                        fill = factor(year, levels = yr_lvsl))) + 
+  geom_density_ridges(na.rm = TRUE, alpha = 0.85) +
+  labs(title = "Distribution of Distance Traveled on Scooter Trips - in April by Year", 
+     subtitle = paste0(loc, "\nTrips with duration of less than half an hour are not displayed."),
+     caption = data_src) +
+  ylab("") +
+  xlab("Trip Duration in minutes") +
+  scale_fill_manual(values = col3, guide = FALSE) 
+# + annotate("text", label = anno1$label, x = anno1$x, y = anno1$y, vjust = -4.5) 
+```
+
+# Trip Speed
+```{r speed_by_year}
+speed_by_year <- df %>% 
+  filter(day_of_month != 31) %>% 
+  group_by(year) %>% 
+  summarise(count = n(), 
+            mean_dur = round(mean(trip_dur_min, na.rm = TRUE), 2),
+            median_dur = round(median(trip_dur_min, na.rm = TRUE), 2))
+```
+
+```{r plt_speed_by_year}
+ggplot(df[(df$trip_ave_speed_mph <= 25), ], aes(x = trip_ave_speed_mph, 
+                                        y = factor(year, levels = yr_lvsl), 
+                                        fill = factor(year, levels = yr_lvsl))) + 
+  geom_density_ridges(na.rm = TRUE, alpha = 0.85) +
+  labs(title = "Average trip speed on Scooter Trips - in April by Year",
+     subtitle = paste0(loc, "\nTrips with average speeds greater than 25mph are not displayed."),
+     caption = data_src) +
+  ylab("") +
+  xlab("Average trip speed in miles per hour") +
+  scale_fill_manual(values = col3, guide = FALSE) +
+  scale_x_continuous(breaks = seq(0, 26, 2)) 
+```
+```
+
+<!-- Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot. -->
