@@ -2,7 +2,7 @@
   renderMyDocument <- function(month_num, month_str) {
     rmarkdown::render("05_parametrized_report/report_by_month.Rmd", 
                       params = list(month_num = month_num, month_str = month_str
-    ), output_file = paste0("report_output/Austin_micromobility_report_", month_str, ".html"))
+    ), output_file = paste0("report_output/Austin_micromobility_report_", month_num, "_", month_str, ".html"))
   }
   
   month_num <- seq(4, 7, by = 1)
