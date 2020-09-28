@@ -49,3 +49,6 @@ vignettes/*.pdf
 
 # data folders
 /*data/
+
+# images
+/images/
