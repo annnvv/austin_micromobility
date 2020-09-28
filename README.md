@@ -1,4 +1,4 @@
-# Austin, TX Micromobility
+# Austin, TX Scooter Micromobility
 
 <b>Status</b>: Complete
 
