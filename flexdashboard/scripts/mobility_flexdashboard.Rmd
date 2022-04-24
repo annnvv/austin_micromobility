@@ -71,32 +71,32 @@ create_end_date <- function(start_date, duration_str){
   return(as.character(end_date))
 }
 
-end_date <- shiny::reactive(create_end_date(input$start_date, input$duration))
-shiny::renderPrint(end_date)
+end_date <- shiny::reactive({create_end_date(input$start_date, input$duration)})
+renderPrint({end_date()})
 ```
 
 ```{r url}
 ###https://mastering-shiny.org/basic-reactivity.html
-url <- shiny::reactive(as.character(paste0("https://data.austintexas.gov/resource/7d8e-dm7r.csv?",
+url <- shiny::reactive({paste0("https://data.austintexas.gov/resource/7d8e-dm7r.csv?",
                               "$where=start_time between ",
-                              paste0("'", as.character(input$start_date()), "T00:00:00", "'"),
+                              paste0("'", as.character(input$start_date), "T00:00:00", "'"),
                               " and ",
                               paste0("'", end_date(), "T23:59:59", "'"),
-                              "&vehicle_type=scooter"))
+                              "&vehicle_type=scooter")}
 )
+renderText({url()})
 ```
 
 
 ```{r get_data}
-raw <- reactive(RSocrata::read.socrata(url,
-                              app_token = config$app_token,
-                              email     = config$email,
-                              password  = config$password,
-                              stringsAsFactors = FALSE
-                            )
-)
-
-raw <- tibble::as_tibble(raw)
+# raw <- RSocrata::read.socrata(url(),
+#                               app_token = config$app_token,
+#                               email     = config$email,
+#                               password  = config$password,
+#                               stringsAsFactors = FALSE
+#                             )
+# 
+# raw <- tibble::as_tibble(raw)
 ```
 
 Trip Aggregates
@@ -108,25 +108,25 @@ Row
 ### Hour
     
 ```{r by_hour}
-by_hour <- raw %>%
-  group_by(hour) %>%
-  summarize(count = n())
-
-shiny::renderPlot(
-  ggplot(by_hour,
-         aes(x = hour, y = count)) +
-    geom_col() +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
-    # facet_wrap(vars(year), nrow = 3, scales = "free_y") +
-    labs(title = "Number of Scooter Trips by Hour",
-         subtitle = loc,
-         caption = data_src) +
-    ylab("Number of Scooter Trips") +
-    xlab("Hour of day [0-23]") +
-    scale_x_continuous(breaks = seq(0, 23, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
-)
+# by_hour <- raw %>%
+#   group_by(hour) %>%
+#   summarize(count = n())
+# 
+# shiny::renderPlot(
+#   ggplot(by_hour,
+#          aes(x = hour, y = count)) +
+#     geom_col() +
+#     geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+#     # facet_wrap(vars(year), nrow = 3, scales = "free_y") +
+#     labs(title = "Number of Scooter Trips by Hour",
+#          subtitle = loc,
+#          caption = data_src) +
+#     ylab("Number of Scooter Trips") +
+#     xlab("Hour of day [0-23]") +
+#     scale_x_continuous(breaks = seq(0, 23, 1)) +
+#     theme_minimal()
+#   # + scale_fill_manual(values = col3, guide = FALSE)
+# )
 ```
  
 ### Day of Week
