@@ -9,9 +9,7 @@ runtime: shiny
 ---
 
 <style>                     
-.navbar {
-  background-color:#bf5700;
-}
+.navbar {background-color:#bf5700;}
 </style>   
 
 
@@ -32,35 +30,43 @@ library(ggplot2)
 
 config <- config::get(file = here::here("00_config/config.yml"), use_parent = TRUE)
 
-data_src <- "Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/"
-loc <- "Location: Austin, TX"
-
 min_date <- "2018-04-13" ## start of dataset
 max_date <-  "2022-03-01" ## data no longer maintained at this URL as of March 1, 2022
 
+## plot labels
 hour_of_day_lbl <- "Hour of day [0-23]"
 day_of_week_lbl <- "Day of Week [0-6]"
+data_src <- "Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/"
+loc <- "Location: Austin, TX"
 
+## plot color palettes
 col_orange <- '#bf5700'
-```
 
+col2 <- c("1" = "#F2A900", #Orange
+          "0" = "#A2A4A1"  #Silver 
+          )
+
+col3 <- c("1" = "#003594", #Dark blue
+          "0" = "#A2A4A1"  #Silver 
+          )
+```
 
 Inputs {.sidebar}
 =====================================  
 
 ```{r inputs}
 shiny::dateInput('start_date', 'Start Date: ', 
-                 value = as.Date(max_date)-lubridate::weeks(x = 4),
+                 value = as.Date(max_date)-lubridate::weeks(x = 8),
                  min =  min_date, max = max_date,
                  format = "yyyy-mm-dd")
 
 shiny::selectInput('duration', 'Duration: ', 
             choices = c('1 week', '1 month', '1 quarter'), 
-            selected = '1 month', multiple = FALSE)
+            selected = '1 week', multiple = FALSE)
 
 create_end_date <- function(start_date, duration_str){
   if(duration_str == '1 week'){
-    end_date <- start_date + lubridate::weeks(x = 1)
+    end_date <- start_date + lubridate::days(x = 6)
   }
   else if(duration_str == '1 month'){
     end_date <- start_date + lubridate::weeks(x = 4)
@@ -102,7 +108,11 @@ raw <- shiny::reactive(RSocrata::read.socrata(url(),
                               password  = config$password,
                               stringsAsFactors = FALSE
                             ) %>% 
-                         tibble::as_tibble()
+                         tibble::as_tibble() %>% 
+                         dplyr::mutate(trip_duration = ifelse(trip_duration <0, NA, trip_duration)) %>% 
+                         dplyr::mutate(trip_duration = ifelse(trip_duration >86400, NA, trip_duration)) %>% 
+                         dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>% 
+                         dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance))
 )
 ```
 
@@ -115,48 +125,54 @@ Column
     
 ### Hour
 ```{r by_hour}
-## TODO: color working hours
 by_hour <- shiny::reactive({raw() %>%
     dplyr::group_by(hour) %>%
-    dplyr::summarize(count = dplyr::n())})
+    dplyr::summarize(count = dplyr::n()) %>% 
+    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0))
+  })
 
 shiny::renderPlot({
   ggplot(by_hour(),
-         aes(x = hour, y = count)) +
+         aes(x = hour, y = count,
+         fill = base::as.factor(work9_5))) +
     geom_col() +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Number of Scooter Trips by Hour",
          subtitle = loc,
          caption = data_src) +
     ylab("Number of Scooter Trips") +
     xlab(hour_of_day_lbl) +
     scale_x_continuous(breaks = seq(0, 23, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col3, labels = c("9-5 Hours", "Non 9-5 Hours"), name = "")
 })
 ```
  
 ### Day of Week
 ```{r by_dow}
-## TODO: color weekend
+## Note from API: 0 = Sunday
 by_dow <- shiny::reactive({raw() %>%
   dplyr::group_by(day_of_week) %>%
-  dplyr::summarize(count = dplyr::n())
+  dplyr::summarize(count = dplyr::n()) %>% 
+  dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0))
   })
 
 shiny::renderPlot(
   ggplot(by_dow(),
-         aes(x = day_of_week, y = count)) +
+         aes(x = day_of_week, y = count, 
+         fill = base::as.factor(weekend))) +
     geom_col() +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Number of Scooter Trips by Day of Week",
          subtitle = loc,
          caption = data_src) +
     ylab("Number of Scooter Trips") +
     xlab(day_of_week_lbl) +
     scale_x_continuous(breaks = seq(0, 6, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col2, labels = c("Weekend", "Weekday"), name = "")
 )
 ``` 
 
@@ -179,8 +195,6 @@ Column
     
 ### Hour
 ```{r avg_dist_by_hour}
-## TODO: color working hours
-## TODO: for this chart, set a reasonable upper-y limit!
 avg_dist_by_hour <- shiny::reactive({raw() %>%
     dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
     dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
@@ -188,31 +202,34 @@ avg_dist_by_hour <- shiny::reactive({raw() %>%
     dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
                      median_distance = stats::median(distance_in_mi),
                      count = dplyr::n()) %>%
+    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>% 
     ungroup()
   })
 
 shiny::renderPlot({
     ggplot(avg_dist_by_hour(),
-         aes(x = hour, y = avg_distance)) +
+         aes(x = hour, y = avg_distance,
+             fill = base::as.factor(work9_5))) +
     geom_col() +
-    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
-      geom_point(aes(x = hour, y = median_distance), col = 'red', alpha = 0.5) +
+    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 4, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4, col = 'blue') +
+    geom_point(aes(x = hour, y = median_distance), col = 'red', alpha = 0.5) +
+    # geom_text(aes(label = format(round(median_distance, 2), big.mark = ",")), vjust = 3, size = 4, col = 'red') +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Average Distance Traveled of Scooter Trips by Hour",
          subtitle = loc,
          caption = data_src) +
     ylab("Average Distance Traveled in Miles") +
     xlab(hour_of_day_lbl) +
+    ylim(0, 3) +
     scale_x_continuous(breaks = seq(0, 23, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col3, labels = c("9-5 Hours", "Non 9-5 Hours"), name = "")
 })
 ```
  
 ### Day of Week
 ```{r avg_dist_by_dow}
-## TODO: color weekend
-## TODO: for this chart, set a reasonable upper-y limit!
 avg_dist_by_dow <- shiny::reactive({raw() %>%
     dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
     dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
@@ -220,24 +237,29 @@ avg_dist_by_dow <- shiny::reactive({raw() %>%
     dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
                      median_distance = stats::median(distance_in_mi),
                      count = dplyr::n()) %>%
+    dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>% 
     ungroup()
   })
 
 shiny::renderPlot({
     ggplot(avg_dist_by_dow(),
-         aes(x = day_of_week, y = avg_distance)) +
+         aes(x = day_of_week, y = avg_distance,
+             fill = base::as.factor(weekend))) +
     geom_col() +
-    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
-      geom_point(aes(x = day_of_week, y = median_distance), col = 'red', alpha = 0.5) +
+    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 4, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4, col = 'blue') +
+    geom_point(aes(x = day_of_week, y = median_distance), col = 'red', alpha = 0.5) +
+    # geom_text(aes(label = format(round(median_distance, 2), big.mark = ",")), vjust = 3, size = 4, col = 'red') +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Average Distance Traveled of Scooter Trips by Day of Week",
          subtitle = loc,
          caption = data_src) +
     ylab("Average Distance Traveled in Miles") +
     xlab(day_of_week_lbl) +
+    ylim(0, 3) +
     scale_x_continuous(breaks = seq(0, 6, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col2, labels = c("Weekend", "Weekday"), name = "")
 })
 ``` 
 
@@ -250,40 +272,40 @@ Column
     
 ### Hour
 ```{r avg_duration_by_hour}
-## TODO: color working hours
-## TODO: for this chart, set a reasonable upper-y limit!
 avg_duration_by_hour <- shiny::reactive({raw() %>%
     dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
     dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
     dplyr::group_by(hour) %>%
     dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
                      median_duration = stats::median(duration_in_min),
-                     count = dplyr::n()) %>%
+                     count = dplyr::n()) %>% 
+    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>% 
     ungroup()
   })
 
 shiny::renderPlot({
     ggplot(avg_duration_by_hour(),
-         aes(x = hour, y = avg_duration)) +
+         aes(x = hour, y = avg_duration,
+             fill = base::as.factor(work9_5))) +
     geom_col() +
-    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 4, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4, col = 'blue') +
     geom_point(aes(x = hour, y = median_duration), col = 'red', alpha = 0.5) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Average Duration of Scooter Trips by Hour",
          subtitle = loc,
          caption = data_src) +
     ylab("Average Duration in Minutes") +
     xlab(hour_of_day_lbl) +
+    ylim(0,20) +
     scale_x_continuous(breaks = seq(0, 23, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col3, labels = c("9-5 Hours", "Non 9-5 Hours"), name = "")
 })
 ```
  
 ### Day of Week
 ```{r avg_duration_by_dow}
-## TODO: color weekend
-## TODO: for this chart, set a reasonable upper-y limit!
 avg_duration_by_dow <- shiny::reactive({raw() %>%
     dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
     dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
@@ -291,26 +313,30 @@ avg_duration_by_dow <- shiny::reactive({raw() %>%
     dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
                      median_duration = stats::median(duration_in_min),
                      count = dplyr::n()) %>%
+    dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>% 
     ungroup()
   })
 
 shiny::renderPlot({
     ggplot(avg_duration_by_dow(),
-         aes(x = day_of_week, y = avg_duration)) +
+         aes(x = day_of_week, y = avg_duration,
+             fill = base::as.factor(weekend))) +
     geom_col() +
-    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
-    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 4, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 4, col = 'blue') +
     geom_point(aes(x = day_of_week, y = median_duration), col = 'red', alpha = 0.5) +
+    theme_minimal() +
+    theme(legend.position = "bottom") +
     labs(title = "Average Duration of Scooter Trips by Day of Week",
          subtitle = loc,
          caption = data_src) +
     ylab("Average Duration in Minutes") +
     xlab(day_of_week_lbl) +
+    ylim(0,20) +
     scale_x_continuous(breaks = seq(0, 6, 1)) +
-    theme_minimal()
-  # + scale_fill_manual(values = col3, guide = FALSE)
+    scale_fill_manual(values = col2, labels = c("Weekend", "Weekday"), name = "")
 })
 ``` 
 
-Census Tract Heatmap
+Council District Heatmap
 =====================================  
