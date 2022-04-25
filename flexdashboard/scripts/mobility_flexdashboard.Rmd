@@ -19,7 +19,7 @@ runtime: shiny
 ## Inspiration | https://beta.rstudioconnect.com/jjallaire/htmlwidgets-showcase-storyboard/htmlwidgets-showcase-storyboard.html
 ## Github Pages: https://www.r-bloggers.com/2020/09/deploying-flexdashboard-on-github-pages/ 
 
-# library(here)
+library(here)
 library(config)
 library(RSocrata)
 library(flexdashboard)
@@ -30,13 +30,16 @@ library(magrittr)
 library(lubridate)
 library(ggplot2)
 
-config <- config::get(file = "C:/Users/Anna V/Documents/Github/austin_micromobility/00_config/config.yml", use_parent = TRUE)
+config <- config::get(file = here::here("00_config/config.yml"), use_parent = TRUE)
 
 data_src <- "Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/"
 loc <- "Location: Austin, TX"
 
 min_date <- "2018-04-13" ## start of dataset
 max_date <-  "2022-03-01" ## data no longer maintained at this URL as of March 1, 2022
+
+hour_of_day_lbl <- "Hour of day [0-23]"
+day_of_week_lbl <- "Day of Week [0-6]"
 
 col_orange <- '#bf5700'
 ```
@@ -46,9 +49,6 @@ Inputs {.sidebar}
 =====================================  
 
 ```{r inputs}
-shiny::renderText(data_src)
-
-
 shiny::dateInput('start_date', 'Start Date: ', 
                  value = as.Date(max_date)-lubridate::weeks(x = 4),
                  min =  min_date, max = max_date,
@@ -72,7 +72,16 @@ create_end_date <- function(start_date, duration_str){
 }
 
 end_date <- shiny::reactive({create_end_date(input$start_date, input$duration)})
-renderPrint({end_date()})
+
+renderText({paste0("Displaying data through ", end_date())})
+```
+
+```{r data_source}
+shiny::renderText("Data Source: City of Austin Open Data Portal \n https://data.austintexas.gov/")
+```
+
+```{r note}
+shiny::renderText("Please note minimal data cleaning has been done to this dataset. In particular, distance and speed may be skewed by outliers or erroneous data.")
 ```
 
 ```{r url}
@@ -84,100 +93,224 @@ url <- shiny::reactive({paste0("https://data.austintexas.gov/resource/7d8e-dm7r.
                               paste0("'", end_date(), "T23:59:59", "'"),
                               "&vehicle_type=scooter")}
 )
-renderText({url()})
 ```
-
 
 ```{r get_data}
-# raw <- RSocrata::read.socrata(url(),
-#                               app_token = config$app_token,
-#                               email     = config$email,
-#                               password  = config$password,
-#                               stringsAsFactors = FALSE
-#                             )
-# 
-# raw <- tibble::as_tibble(raw)
+raw <- shiny::reactive(RSocrata::read.socrata(url(),
+                              app_token = config$app_token,
+                              email     = config$email,
+                              password  = config$password,
+                              stringsAsFactors = FALSE
+                            ) %>% 
+                         tibble::as_tibble()
+)
 ```
 
-Trip Aggregates
+
+Trip Count
 =====================================  
 
-Row
+Column
 -------------------------------------
     
 ### Hour
-    
 ```{r by_hour}
-# by_hour <- raw %>%
-#   group_by(hour) %>%
-#   summarize(count = n())
-# 
-# shiny::renderPlot(
-#   ggplot(by_hour,
-#          aes(x = hour, y = count)) +
-#     geom_col() +
-#     geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
-#     # facet_wrap(vars(year), nrow = 3, scales = "free_y") +
-#     labs(title = "Number of Scooter Trips by Hour",
-#          subtitle = loc,
-#          caption = data_src) +
-#     ylab("Number of Scooter Trips") +
-#     xlab("Hour of day [0-23]") +
-#     scale_x_continuous(breaks = seq(0, 23, 1)) +
-#     theme_minimal()
-#   # + scale_fill_manual(values = col3, guide = FALSE)
-# )
+## TODO: color working hours
+by_hour <- shiny::reactive({raw() %>%
+    dplyr::group_by(hour) %>%
+    dplyr::summarize(count = dplyr::n())})
+
+shiny::renderPlot({
+  ggplot(by_hour(),
+         aes(x = hour, y = count)) +
+    geom_col() +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+    labs(title = "Number of Scooter Trips by Hour",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Number of Scooter Trips") +
+    xlab(hour_of_day_lbl) +
+    scale_x_continuous(breaks = seq(0, 23, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+})
 ```
  
 ### Day of Week
-    
 ```{r by_dow}
-# by_dow <- raw %>%
-#   group_by(day_of_week) %>%
-#   summarize(count = n())
-# 
-# shiny::renderPlot(
-#   ggplot(by_dow,
-#          aes(x = day_of_week, y = count)) +
-#     geom_col() +
-#     geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
-#     # facet_wrap(vars(year), nrow = 3, scales = "free_y") +
-#     labs(title = "Number of Scooter Trips by Day of Week",
-#          subtitle = loc,
-#          caption = data_src) +
-#     ylab("Number of Scooter Trips") +
-#     xlab("Day of Week [0-6]") +
-#     scale_x_continuous(breaks = seq(0, 6, 1)) +
-#     theme_minimal()
-#   # + scale_fill_manual(values = col3, guide = FALSE)
-# )
-``` 
+## TODO: color weekend
+by_dow <- shiny::reactive({raw() %>%
+  dplyr::group_by(day_of_week) %>%
+  dplyr::summarize(count = dplyr::n())
+  })
 
-Row
--------------------------------------
-    
-### Chart 3
-    
-```{r}
-print('Chart 3')
-# renderPlot()
-```
- 
-### Chart 4
-    
-```{r}
-print('Chart 4')
-# renderPlot()
+shiny::renderPlot(
+  ggplot(by_dow(),
+         aes(x = day_of_week, y = count)) +
+    geom_col() +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2) +
+    labs(title = "Number of Scooter Trips by Day of Week",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Number of Scooter Trips") +
+    xlab(day_of_week_lbl) +
+    scale_x_continuous(breaks = seq(0, 6, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+)
 ``` 
-
 
 
 Day of Month Heatmap
 =====================================  
+
+In Progress
+
 ```{r}
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
 ```
 
+
+Average Trip Distance
+===================================== 
+
+Column
+-------------------------------------
+    
+### Hour
+```{r avg_dist_by_hour}
+## TODO: color working hours
+## TODO: for this chart, set a reasonable upper-y limit!
+avg_dist_by_hour <- shiny::reactive({raw() %>%
+    dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
+    dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
+    dplyr::group_by(hour) %>%
+    dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
+                     median_distance = stats::median(distance_in_mi),
+                     count = dplyr::n()) %>%
+    ungroup()
+  })
+
+shiny::renderPlot({
+    ggplot(avg_dist_by_hour(),
+         aes(x = hour, y = avg_distance)) +
+    geom_col() +
+    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+      geom_point(aes(x = hour, y = median_distance), col = 'red', alpha = 0.5) +
+    labs(title = "Average Distance Traveled of Scooter Trips by Hour",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Average Distance Traveled in Miles") +
+    xlab(hour_of_day_lbl) +
+    scale_x_continuous(breaks = seq(0, 23, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+})
+```
+ 
+### Day of Week
+```{r avg_dist_by_dow}
+## TODO: color weekend
+## TODO: for this chart, set a reasonable upper-y limit!
+avg_dist_by_dow <- shiny::reactive({raw() %>%
+    dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
+    dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
+    dplyr::group_by(day_of_week) %>%
+    dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
+                     median_distance = stats::median(distance_in_mi),
+                     count = dplyr::n()) %>%
+    ungroup()
+  })
+
+shiny::renderPlot({
+    ggplot(avg_dist_by_dow(),
+         aes(x = day_of_week, y = avg_distance)) +
+    geom_col() +
+    geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+      geom_point(aes(x = day_of_week, y = median_distance), col = 'red', alpha = 0.5) +
+    labs(title = "Average Distance Traveled of Scooter Trips by Day of Week",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Average Distance Traveled in Miles") +
+    xlab(day_of_week_lbl) +
+    scale_x_continuous(breaks = seq(0, 6, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+})
+``` 
+
+
+Average Trip Duration
+===================================== 
+
+Column
+-------------------------------------
+    
+### Hour
+```{r avg_duration_by_hour}
+## TODO: color working hours
+## TODO: for this chart, set a reasonable upper-y limit!
+avg_duration_by_hour <- shiny::reactive({raw() %>%
+    dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
+    dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
+    dplyr::group_by(hour) %>%
+    dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
+                     median_duration = stats::median(duration_in_min),
+                     count = dplyr::n()) %>%
+    ungroup()
+  })
+
+shiny::renderPlot({
+    ggplot(avg_duration_by_hour(),
+         aes(x = hour, y = avg_duration)) +
+    geom_col() +
+    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+    geom_point(aes(x = hour, y = median_duration), col = 'red', alpha = 0.5) +
+    labs(title = "Average Duration of Scooter Trips by Hour",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Average Duration in Minutes") +
+    xlab(hour_of_day_lbl) +
+    scale_x_continuous(breaks = seq(0, 23, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+})
+```
+ 
+### Day of Week
+```{r avg_duration_by_dow}
+## TODO: color weekend
+## TODO: for this chart, set a reasonable upper-y limit!
+avg_duration_by_dow <- shiny::reactive({raw() %>%
+    dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
+    dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
+    dplyr::group_by(day_of_week) %>%
+    dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
+                     median_duration = stats::median(duration_in_min),
+                     count = dplyr::n()) %>%
+    ungroup()
+  })
+
+shiny::renderPlot({
+    ggplot(avg_duration_by_dow(),
+         aes(x = day_of_week, y = avg_duration)) +
+    geom_col() +
+    geom_text(aes(label = format(round(avg_duration, 2), big.mark = ",")), vjust = 1.5, size = 2, col = 'white') +
+    geom_text(aes(label = format(count, big.mark = ",")), vjust = -0.3, size = 2, col = 'blue') +
+    geom_point(aes(x = day_of_week, y = median_duration), col = 'red', alpha = 0.5) +
+    labs(title = "Average Duration of Scooter Trips by Day of Week",
+         subtitle = loc,
+         caption = data_src) +
+    ylab("Average Duration in Minutes") +
+    xlab(day_of_week_lbl) +
+    scale_x_continuous(breaks = seq(0, 6, 1)) +
+    theme_minimal()
+  # + scale_fill_manual(values = col3, guide = FALSE)
+})
+``` 
 
 Census Tract Heatmap
 =====================================  
