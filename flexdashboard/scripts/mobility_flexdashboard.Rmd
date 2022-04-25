@@ -27,6 +27,8 @@ library(dplyr)
 library(magrittr)
 library(lubridate)
 library(ggplot2)
+# library(sugrrants)
+library(leaflet)
 
 config <- config::get(file = here::here("00_config/config.yml"), use_parent = TRUE)
 
@@ -184,6 +186,16 @@ In Progress
 
 ```{r}
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
+
+# raw() %>% 
+#   dplyr::mutate(date = as.Date(start_time)) %>% 
+#   dplyr::group_by(date) %>%
+#   dplyr::summarise(count = n()) %>%
+#   dplyr::ungroup()
+#   sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly")
+#   ggplot(aes(x = .x, y = .y)) +
+#   geom_tile(aes(fill = count), colour = "grey50") +
+#   scale_fill_viridis()
 ```
 
 
@@ -338,5 +350,50 @@ shiny::renderPlot({
 })
 ``` 
 
-Council District Heatmap
+Council District Trip Heatmap
 =====================================  
+
+```{r heat_map}
+## av.note: note sure why council_district_end and council_district_end are character vectors
+## av.note: the x and y axis scale is a bit off because of this (1, 10, 2, 3, etc.)
+
+all_districts <- base::expand.grid(council_district_start = base::as.character(c(1:10)),
+                                   council_district_end = base::as.character(c(1:10))) %>% 
+  tibble::as_tibble()
+
+council <- shiny::reactive({raw() %>%
+    dplyr::group_by(council_district_start, council_district_end) %>% 
+    dplyr::summarize(count = dplyr::n()) %>% 
+    ungroup() %>% 
+    dplyr::right_join(all_districts, by = c('council_district_start', 'council_district_end')) %>% 
+    arrange(council_district_start, council_district_end)
+})
+
+
+shiny::renderPlot({
+  ggplot(council(), aes(x = base::as.factor(council_district_end), 
+                        y = as.factor(council_district_start), 
+                        fill = count)) +
+  geom_tile(color = "white",
+            lwd = 1.5,
+            linetype = 1)+
+  geom_text(aes(label = count), color = "white", size = 4) +
+  theme_minimal() +
+  labs(title = "Number of Trips per Council District") +
+  xlab("Trips that ended in the Council District") +
+  ylab("Trips that started in the Council District") + 
+  coord_fixed() +
+  guides(fill = guide_colourbar(barwidth = 0.5,
+                                barheight = 20)) 
+})
+
+```
+
+
+Council District Reference Map
+=====================================  
+
+```{r council_leaflet}
+
+```
+
