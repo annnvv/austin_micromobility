@@ -28,6 +28,7 @@ library(magrittr)
 library(lubridate)
 library(ggplot2)
 # library(sugrrants)
+library(sf)
 library(leaflet)
 
 config <- config::get(file = here::here("00_config/config.yml"), use_parent = TRUE)
@@ -383,8 +384,8 @@ shiny::renderPlot({
   xlab("Trips that ended in the Council District") +
   ylab("Trips that started in the Council District") + 
   coord_fixed() +
-  guides(fill = guide_colourbar(barwidth = 0.5,
-                                barheight = 20)) 
+  guides(fill = guide_colourbar(barwidth = 1,
+                                barheight = 30)) 
 })
 
 ```
@@ -393,7 +394,40 @@ shiny::renderPlot({
 Council District Reference Map
 =====================================  
 
-```{r council_leaflet}
+```{r leaflet_map}
+## map data source: https://www.austintexas.gov/page/city-council-district-map 
 
+austin_shp <- sf::st_read(here("flexdashboard/data/Council Districts Fill.geojson"), 
+                          quiet = TRUE, stringsAsFactors = FALSE) %>% 
+  dplyr::select(council_district, council_district_path, geometry) %>% 
+  dplyr::rename(council_district_website = council_district_path) %>% 
+  sf::st_make_valid() %>%  ##av.note: one polygon had an invalid geometry
+  dplyr::mutate(council_district = base::as.numeric(council_district)) %>% 
+  dplyr::arrange(council_district)
+
+polygon_centroids <- austin_shp %>%
+  sf::st_centroid() %>%
+  sf::st_geometry() %>%
+  sf::st_as_sf() %>% 
+  sf::st_coordinates() %>% 
+  tibble::as_tibble() %>% 
+  setNames(c("centroid_lon", "centroid_lat")) 
+
+austin_shp %<>% 
+  cbind(polygon_centroids)
+
+
+renderLeaflet({
+  leaflet(austin_shp) %>%
+    setView(lng = -97.743056, lat = 30.267222, zoom = 11) %>% 
+    addTiles() %>%
+    # addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(weight = 1, opacity = 1.0, fillOpacity = 0.5, color = 'grey',
+                fillColor = topo.colors(10, alpha = NULL),
+                popup = paste0("District: ", austin_shp$council_district))%>% 
+    addLabelOnlyMarkers(lng = ~centroid_lon, lat = ~centroid_lat, label = ~council_district,
+                        labelOptions = labelOptions(noHide = TRUE, textsize = 8, 
+                                                    direction = 'top', textOnly = TRUE))
+})
 ```
 
