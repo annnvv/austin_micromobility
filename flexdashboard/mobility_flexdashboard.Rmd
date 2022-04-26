@@ -15,7 +15,6 @@ runtime: shiny
 
 ```{r global, include=FALSE}
 ## Inspiration | https://beta.rstudioconnect.com/jjallaire/htmlwidgets-showcase-storyboard/htmlwidgets-showcase-storyboard.html
-## Github Pages: https://www.r-bloggers.com/2020/09/deploying-flexdashboard-on-github-pages/ 
 
 library(here)
 library(config)
@@ -351,6 +350,7 @@ shiny::renderPlot({
 })
 ``` 
 
+
 Council District Trip Heatmap
 =====================================  
 
@@ -415,7 +415,6 @@ polygon_centroids <- austin_shp %>%
 
 austin_shp %<>% 
   cbind(polygon_centroids)
-
 
 renderLeaflet({
   leaflet(austin_shp) %>%
