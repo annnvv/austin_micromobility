@@ -26,7 +26,8 @@ library(dplyr)
 library(magrittr)
 library(lubridate)
 library(ggplot2)
-# library(sugrrants)
+library(sugrrants)
+# library(viridis)
 library(sf)
 library(leaflet)
 
@@ -98,7 +99,7 @@ url <- shiny::reactive({paste0("https://data.austintexas.gov/resource/7d8e-dm7r.
                               "$where=start_time between ",
                               paste0("'", as.character(input$start_date), "T00:00:00", "'"),
                               " and ",
-                              paste0("'", end_date(), "T23:59:59", "'"),
+                              paste0("'", end_date(), "T00:00:00", "'"),
                               "&vehicle_type=scooter")}
 )
 ```
@@ -182,20 +183,25 @@ shiny::renderPlot(
 Day of Month Heatmap
 =====================================  
 
-In Progress
-
 ```{r}
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
 
-# raw() %>% 
-#   dplyr::mutate(date = as.Date(start_time)) %>% 
-#   dplyr::group_by(date) %>%
-#   dplyr::summarise(count = n()) %>%
-#   dplyr::ungroup()
-#   sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly")
-#   ggplot(aes(x = .x, y = .y)) +
-#   geom_tile(aes(fill = count), colour = "grey50") +
-#   scale_fill_viridis()
+shiny::renderPlot({
+  raw() %>%
+    dplyr::mutate(date = as.Date(start_time)) %>%
+    dplyr::group_by(date) %>%
+    dplyr::summarise(count = n()) %>%
+    dplyr::ungroup() %>% 
+    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly") %>% 
+    ggplot(aes(x = .x, y = .y)) +
+    geom_tile(aes(fill = count), 
+              color = "white", lwd = 1, linetype = 1) +
+    geom_text(aes(label = count), color = "grey", size = 6) + 
+    xlab('') +
+    ylab('') +
+    theme_minimal() + 
+    scale_colour_viridis_d()
+})
 ```
 
 
