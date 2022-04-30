@@ -106,7 +106,7 @@ url <- shiny::reactive({paste0("https://data.austintexas.gov/resource/7d8e-dm7r.
                               paste0("'", as.character(input$start_date), "T00:00:00", "'"),
                               " and ",
                               paste0("'", as.character(end_date()), "T00:00:00", "'"),
-                              "&vehicle_type=scooter")}
+                              "&vehicle_type=scooter&$limit=1000000")}
 )
 ```
 
@@ -116,11 +116,11 @@ raw <- shiny::reactive(RSocrata::read.socrata(url(),
                               email     = config$email,
                               password  = config$password,
                               stringsAsFactors = FALSE
-                            ) %>% 
-                         tibble::as_tibble() %>% 
-                         dplyr::mutate(trip_duration = ifelse(trip_duration <0, NA, trip_duration)) %>% 
-                         dplyr::mutate(trip_duration = ifelse(trip_duration >86400, NA, trip_duration)) %>% 
-                         dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>% 
+                            ) %>%
+                         tibble::as_tibble() %>%
+                         dplyr::mutate(trip_duration = ifelse(trip_duration <0, NA, trip_duration)) %>%
+                         dplyr::mutate(trip_duration = ifelse(trip_duration >86400, NA, trip_duration)) %>%
+                         dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>%
                          dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance))
 )
 ```
@@ -390,14 +390,13 @@ Council District Trip Heatmap
 =====================================  
 
 ```{r heat_map}
-## av.note: note sure why council_district_end and council_district_end are character vectors
-## av.note: the x and y axis scale is a bit off because of this (1, 10, 2, 3, etc.)
-
-all_districts <- base::expand.grid(council_district_start = base::as.character(c(1:10)),
-                                   council_district_end = base::as.character(c(1:10))) %>% 
+all_districts <- base::expand.grid(council_district_start = c(1:10),
+                                   council_district_end = c(1:10)) %>% 
   tibble::as_tibble()
 
 council <- shiny::reactive({raw() %>%
+    dplyr::mutate(council_district_start = base::strtoi(council_district_start),
+                  council_district_end = base::strtoi(council_district_end)) %>% 
     dplyr::group_by(council_district_start, council_district_end) %>% 
     dplyr::summarize(count = dplyr::n()) %>% 
     ungroup() %>% 
@@ -410,17 +409,17 @@ shiny::renderPlot({
   ggplot(council(), aes(x = base::as.factor(council_district_end), 
                         y = as.factor(council_district_start), 
                         fill = count)) +
-  geom_tile(color = "white",
-            lwd = 1.5,
-            linetype = 1)+
-  geom_text(aes(label = count), color = "white", size = 4) +
-  theme_minimal() +
-  labs(title = "Number of Trips per Council District") +
-  xlab("Trips that ended in the Council District") +
-  ylab("Trips that started in the Council District") + 
-  coord_fixed() +
-  guides(fill = guide_colourbar(barwidth = 1,
-                                barheight = 30)) 
+    geom_tile(color = "white",
+              lwd = 1.5,
+              linetype = 1)+
+    geom_text(aes(label = count), color = "white", size = 4) +
+    theme_minimal() +
+    labs(title = "Number of Trips per Council District") +
+    xlab("Trips that ended in the Council District") +
+    ylab("Trips that started in the Council District") + 
+    coord_fixed() +
+    guides(fill = guide_colourbar(barwidth = 1,
+                                  barheight = 30)) 
 })
 
 ```
