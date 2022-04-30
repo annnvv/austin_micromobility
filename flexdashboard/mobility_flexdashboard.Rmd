@@ -74,6 +74,7 @@ create_end_date <- function(start_date, duration_str){
   #   duration: a string with three options: 1 week, 1 month, 1 quarter
   # Output:
   #   end_date: an end date in the date format "yyyy-mm-dd"
+  
   if(duration_str == '1 week'){
     end_date <- start_date + lubridate::days(x = 6)
   }
@@ -239,7 +240,7 @@ rate_of_change <- shiny::reactive({
       glimpse()
 })
 
-# shiny::renderPrint(head(rate_of_change))
+shiny::renderPrint(head(rate_of_change))
 ```
 
 
@@ -251,19 +252,16 @@ Column
     
 ### Hour
 ```{r avg_dist_by_hour}
-avg_dist_by_hour <- shiny::reactive({raw() %>%
-    dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
-    dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
-    dplyr::group_by(hour) %>%
-    dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
-                     median_distance = stats::median(distance_in_mi),
-                     count = dplyr::n()) %>%
-    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>% 
-    ungroup()
-  })
-
 shiny::renderPlot({
-    ggplot(avg_dist_by_hour(),
+    ggplot(raw() %>%
+             dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
+             dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
+             dplyr::group_by(hour) %>%
+             dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE),
+                              median_distance = stats::median(distance_in_mi),
+                              count = dplyr::n()) %>%
+             dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>%
+             ungroup(),
          aes(x = hour, y = avg_distance,
              fill = base::as.factor(work9_5))) +
     geom_col() +
@@ -286,20 +284,17 @@ shiny::renderPlot({
  
 ### Day of Week
 ```{r avg_dist_by_dow}
-avg_dist_by_dow <- shiny::reactive({raw() %>%
-    dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
-    dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
-    dplyr::group_by(day_of_week) %>%
-    dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE), 
-                     median_distance = stats::median(distance_in_mi),
-                     count = dplyr::n()) %>%
-    dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>% 
-    ungroup()
-  })
-
 shiny::renderPlot({
-    ggplot(avg_dist_by_dow(),
-         aes(x = day_of_week, y = avg_distance,
+    ggplot(raw() %>%
+             dplyr::mutate(distance_in_mi = (trip_distance*0.000621371)) %>%
+             dplyr::mutate(distance_in_mi = base::ifelse(distance_in_mi < 0, NA, distance_in_mi)) %>%
+             dplyr::group_by(day_of_week) %>%
+             dplyr::summarize(avg_distance = base::mean(distance_in_mi, na.rm = TRUE),
+                              median_distance = stats::median(distance_in_mi),
+                              count = dplyr::n()) %>%
+             dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>%
+             ungroup(),
+           aes(x = day_of_week, y = avg_distance,
              fill = base::as.factor(weekend))) +
     geom_col() +
     geom_text(aes(label = format(round(avg_distance, 2), big.mark = ",")), vjust = 1.5, size = 4, col = 'white') +
@@ -328,19 +323,16 @@ Column
     
 ### Hour
 ```{r avg_duration_by_hour}
-avg_duration_by_hour <- shiny::reactive({raw() %>%
-    dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
-    dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
-    dplyr::group_by(hour) %>%
-    dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
-                     median_duration = stats::median(duration_in_min),
-                     count = dplyr::n()) %>% 
-    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>% 
-    ungroup()
-  })
-
 shiny::renderPlot({
-    ggplot(avg_duration_by_hour(),
+    ggplot(raw() %>%
+             dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
+             dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
+             dplyr::group_by(hour) %>%
+             dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE),
+                              median_duration = stats::median(duration_in_min),
+                              count = dplyr::n()) %>%
+             dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)) %>%
+             ungroup(),
          aes(x = hour, y = avg_duration,
              fill = base::as.factor(work9_5))) +
     geom_col() +
@@ -362,19 +354,16 @@ shiny::renderPlot({
  
 ### Day of Week
 ```{r avg_duration_by_dow}
-avg_duration_by_dow <- shiny::reactive({raw() %>%
-    dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
-    dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
-    dplyr::group_by(day_of_week) %>%
-    dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE), 
-                     median_duration = stats::median(duration_in_min),
-                     count = dplyr::n()) %>%
-    dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>% 
-    ungroup()
-  })
-
 shiny::renderPlot({
-    ggplot(avg_duration_by_dow(),
+    ggplot(raw() %>%
+             dplyr::mutate(duration_in_min = (trip_duration/60)) %>%
+             dplyr::mutate(duration_in_min = base::ifelse(duration_in_min < 0, NA, duration_in_min)) %>%
+             dplyr::group_by(day_of_week) %>%
+             dplyr::summarize(avg_duration = base::mean(duration_in_min, na.rm = TRUE),
+                              median_duration = stats::median(duration_in_min),
+                              count = dplyr::n()) %>%
+             dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)) %>%
+             ungroup(),
          aes(x = day_of_week, y = avg_duration,
              fill = base::as.factor(weekend))) +
     geom_col() +
@@ -403,21 +392,18 @@ all_districts <- base::expand.grid(council_district_start = c(1:10),
                                    council_district_end = c(1:10)) %>% 
   tibble::as_tibble()
 
-council <- shiny::reactive({raw() %>%
-    dplyr::mutate(council_district_start = base::strtoi(council_district_start),
-                  council_district_end = base::strtoi(council_district_end)) %>% 
-    dplyr::group_by(council_district_start, council_district_end) %>% 
-    dplyr::summarize(count = dplyr::n()) %>% 
-    ungroup() %>% 
-    dplyr::right_join(all_districts, by = c('council_district_start', 'council_district_end')) %>% 
-    arrange(council_district_start, council_district_end)
-})
-
-
 shiny::renderPlot({
-  ggplot(council(), aes(x = base::as.factor(council_district_end), 
-                        y = as.factor(council_district_start), 
-                        fill = count)) +
+  ggplot(raw() %>%
+           dplyr::mutate(council_district_start = base::strtoi(council_district_start),
+                         council_district_end = base::strtoi(council_district_end)) %>%
+           dplyr::group_by(council_district_start, council_district_end) %>% 
+           dplyr::summarize(count = dplyr::n()) %>%
+           ungroup() %>%
+           dplyr::right_join(all_districts, by = c('council_district_start', 'council_district_end')) %>% 
+           arrange(council_district_start, council_district_end),
+         aes(x = base::as.factor(council_district_end),
+             y = as.factor(council_district_start),
+             fill = count)) +
     geom_tile(color = "white",
               lwd = 1.5,
               linetype = 1)+
@@ -430,7 +416,6 @@ shiny::renderPlot({
     guides(fill = guide_colourbar(barwidth = 1,
                                   barheight = 30)) 
 })
-
 ```
 
 
