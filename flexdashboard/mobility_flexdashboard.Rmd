@@ -123,6 +123,21 @@ raw <- shiny::reactive(RSocrata::read.socrata(url(),
                          dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>%
                          dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance))
 )
+
+# library(httr)
+# raw <- shiny::reactive({
+#   httr::GET(url(),
+#             config = add_headers(.headers = c(
+#                                               app_token = config$app_token,
+#                                               email = config$email,
+#                                               password = config$password))) %>%
+#     httr::content(type = 'text/csv', encoding = 'utf-8')%>% 
+#     tibble::as_tibble() %>%
+#     dplyr::mutate(trip_duration = ifelse(trip_duration <0, NA, trip_duration)) %>%
+#     dplyr::mutate(trip_duration = ifelse(trip_duration >86400, NA, trip_duration)) %>%
+#     dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>%
+#     dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance))
+# })
 ```
 
 
@@ -134,14 +149,11 @@ Column
     
 ### Hour
 ```{r by_hour}
-by_hour <- shiny::reactive({raw() %>%
-    dplyr::group_by(hour) %>%
-    dplyr::summarize(count = dplyr::n()) %>% 
-    dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0))
-  })
-
 shiny::renderPlot({
-  ggplot(by_hour(),
+  ggplot(raw() %>%
+           dplyr::group_by(hour) %>%
+           dplyr::summarize(count = dplyr::n()) %>%
+           dplyr::mutate(work9_5 = ifelse((hour >= 9 & hour <= 17), 1, 0)),
          aes(x = hour, y = count,
          fill = base::as.factor(work9_5))) +
     geom_col() +
@@ -161,14 +173,11 @@ shiny::renderPlot({
 ### Day of Week
 ```{r by_dow}
 ## Note from API: 0 = Sunday
-by_dow <- shiny::reactive({raw() %>%
-  dplyr::group_by(day_of_week) %>%
-  dplyr::summarize(count = dplyr::n()) %>% 
-  dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0))
-  })
-
 shiny::renderPlot(
-  ggplot(by_dow(),
+  ggplot(raw() %>%
+           dplyr::group_by(day_of_week) %>%
+           dplyr::summarize(count = dplyr::n()) %>%
+           dplyr::mutate(weekend = ifelse(day_of_week == 0 | day_of_week == 6, 1, 0)),
          aes(x = day_of_week, y = count, 
          fill = base::as.factor(weekend))) +
     geom_col() +
