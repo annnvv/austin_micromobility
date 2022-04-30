@@ -212,6 +212,7 @@ shiny::renderPlot({
     ggplot(aes(x = .x, y = .y)) +
     geom_tile(aes(fill = count), 
               color = "white", lwd = 1, linetype = 1) +
+    scale_fill_continuous() + 
     geom_text(aes(label = count), color = "grey", size = 6) + 
     xlab('') +
     ylab('') +
@@ -219,8 +220,7 @@ shiny::renderPlot({
     theme(
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
-      axis.ticks = element_blank()) +
-    scale_colour_viridis_d()
+      axis.ticks = element_blank())
 })
 ```
 
@@ -240,7 +240,7 @@ rate_of_change <- shiny::reactive({
       glimpse()
 })
 
-shiny::renderPrint(head(rate_of_change))
+shiny::renderPrint(head(rate_of_change()))
 ```
 
 
@@ -450,7 +450,7 @@ renderLeaflet({
     addTiles() %>%
     # addProviderTiles(providers$CartoDB.Positron) %>%
     addPolygons(weight = 1, opacity = 1.0, fillOpacity = 0.5, color = 'grey',
-                fillColor = topo.colors(10, alpha = NULL),
+                fillColor = grDevices::rainbow(10, alpha = NULL),
                 popup = paste0("District: ", austin_shp$council_district))%>% 
     addLabelOnlyMarkers(lng = ~centroid_lon, lat = ~centroid_lat, label = ~council_district,
                         labelOptions = labelOptions(noHide = TRUE, textsize = 8, 
