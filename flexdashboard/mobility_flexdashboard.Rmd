@@ -68,16 +68,22 @@ shiny::selectInput('duration', 'Duration: ',
             selected = '1 week', multiple = FALSE)
 
 create_end_date <- function(start_date, duration_str){
+  # Purpose: To generate end date (date) based on a start_date (date) and a duration (string).
+  # Args:
+  #   start_date: a start date object in the date format "yyyy-mm-dd"
+  #   duration: a string with three options: 1 week, 1 month, 1 quarter
+  # Output:
+  #   end_date: an end date in the date format "yyyy-mm-dd"
   if(duration_str == '1 week'){
-    end_date <- start_date + lubridate::days(x = 6)
+    end_date <- start_date + lubridate::weeks(x = 1)
   }
   else if(duration_str == '1 month'){
-    end_date <- start_date + lubridate::weeks(x = 4)
+    end_date <- start_date + base::months(x = 1)
   }
   else if(duration_str == '1 quarter'){
-    end_date <- start_date + lubridate::weeks(x = 12)
+    end_date <- start_date + base::months(x = 3)
   }
-  return(as.character(end_date))
+  return(end_date)
 }
 
 end_date <- shiny::reactive({create_end_date(input$start_date, input$duration)})
@@ -99,7 +105,7 @@ url <- shiny::reactive({paste0("https://data.austintexas.gov/resource/7d8e-dm7r.
                               "$where=start_time between ",
                               paste0("'", as.character(input$start_date), "T00:00:00", "'"),
                               " and ",
-                              paste0("'", end_date(), "T00:00:00", "'"),
+                              paste0("'", as.character(end_date()), "T00:00:00", "'"),
                               "&vehicle_type=scooter")}
 )
 ```
@@ -200,8 +206,31 @@ shiny::renderPlot({
     xlab('') +
     ylab('') +
     theme_minimal() + 
+    theme(
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank()) +
     scale_colour_viridis_d()
 })
+```
+
+
+Number of Trips Rate of Change Heatmap
+=====================================  
+
+```{r rate_of_change}
+rate_of_change <- shiny::reactive({
+  raw() %>%
+    dplyr::mutate(date = base::as.Date(start_time)) %>% # format = c("%m/%d/%Y %h:%m%:%s %p")
+    dplyr::group_by(date) %>%
+    dplyr::summarise(count = n()) %>%
+    dplyr::arrange(date, .by_group = TRUE) %>% 
+    dplyr::mutate(rate_of_change = ((count-lag(count))/count)*100 ) %>% 
+    dplyr::ungroup() %>% 
+      glimpse()
+})
+
+# shiny::renderPrint(head(rate_of_change))
 ```
 
 
