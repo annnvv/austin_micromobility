@@ -10,3 +10,9 @@ Additionally, I wanted to create an interactive dashboard. Using flexdashboard w
 **Skills Learned/Utilized**:
 1. Shiny reactivity in rmarkdown
 2. Flexdashboard in rmarkdown
+
+
+**Areas of Improvement/Known Issues**:
+- The app is quite slow to download the data via the RSocrata API and refresh the app. I hypothesize that using the `httr` package would be faster.
+- Issues with dates for the API request and that BETWEEN is inclusive of the end date.
+- Not a very effective blue color scale for the two heatmaps.
