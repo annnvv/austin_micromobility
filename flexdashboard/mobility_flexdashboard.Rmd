@@ -97,7 +97,7 @@ shiny::renderText("Data Source: City of Austin Open Data Portal \n https://data.
 ```
 
 ```{r note}
-shiny::renderText("Please note minimal data cleaning has been done to this dataset. In particular, distance and speed may be skewed by outliers or erroneous data.")
+shiny::renderText("Please note minimal data cleaning has been done to this dataset. In particular, distance and duration may be skewed by outliers or erroneous data.")
 ```
 
 ```{r url}
