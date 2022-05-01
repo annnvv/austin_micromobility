@@ -121,7 +121,8 @@ raw <- shiny::reactive(RSocrata::read.socrata(url(),
                          dplyr::mutate(trip_duration = ifelse(trip_duration <0, NA, trip_duration)) %>%
                          dplyr::mutate(trip_duration = ifelse(trip_duration >86400, NA, trip_duration)) %>%
                          dplyr::mutate(trip_distance = ifelse(trip_distance <0, NA, trip_distance)) %>%
-                         dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance))
+                         dplyr::mutate(trip_distance = ifelse(trip_distance >804672 , NA, trip_distance)) %>% 
+                         dplyr::mutate(date = as.Date(start_time))
 )
 
 # library(httr)
@@ -153,11 +154,10 @@ Column
 
 shiny::renderPlot({
   raw() %>%
-    dplyr::mutate(date = as.Date(start_time)) %>%
     dplyr::group_by(date) %>%
     dplyr::summarise(count = n()) %>%
     dplyr::ungroup() %>% 
-    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly") %>% 
+    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly", week_start = 7) %>% 
     ggplot(aes(x = .x, y = .y)) +
     geom_tile(aes(fill = count), 
               color = "white", lwd = 1, linetype = 1) +
@@ -177,13 +177,12 @@ shiny::renderPlot({
 ```{r rate_of_change}
 shiny::renderPlot({
   raw() %>%
-    dplyr::mutate(date = base::as.Date(start_time)) %>% # format = c("%m/%d/%Y %h:%m%:%s %p")
     dplyr::group_by(date) %>%
     dplyr::summarise(count = n()) %>%
     dplyr::arrange(date, .by_group = TRUE) %>% 
     dplyr::mutate(rate_of_change = ((count-lag(count))/count)*100 ) %>% 
     dplyr::ungroup() %>% 
-    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly") %>% 
+    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly", week_start = 7) %>% 
     ggplot(aes(x = .x, y = .y)) +
     geom_tile(aes(fill = rate_of_change), 
               color = "white", lwd = 1, linetype = 1) +
