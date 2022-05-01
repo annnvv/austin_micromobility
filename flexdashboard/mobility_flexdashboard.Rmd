@@ -199,7 +199,11 @@ shiny::renderPlot(
 Day of Month Heatmap
 =====================================  
 
-```{r}
+Column
+-------------------------------------
+
+### Number of Trips
+```{r month}
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
 
 shiny::renderPlot({
@@ -220,14 +224,13 @@ shiny::renderPlot({
     theme(
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
-      axis.ticks = element_blank())
+      axis.ticks = element_blank())+
+    guides(fill = guide_colourbar(barwidth = 1,
+                                  barheight = 10)) 
 })
 ```
 
-
-Number of Trips Rate of Change Heatmap
-=====================================  
-
+### Rate of Change
 ```{r rate_of_change}
 rate_of_change <- shiny::reactive({
   raw() %>%
