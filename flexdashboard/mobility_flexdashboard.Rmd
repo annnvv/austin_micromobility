@@ -27,7 +27,6 @@ library(magrittr)
 library(lubridate)
 library(ggplot2)
 library(sugrrants)
-# library(viridis)
 library(sf)
 library(leaflet)
 
@@ -202,7 +201,7 @@ Day of Month Heatmap
 Column
 -------------------------------------
 
-### Number of Trips
+### Number of Trips per Day
 ```{r month}
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
 
@@ -216,23 +215,21 @@ shiny::renderPlot({
     ggplot(aes(x = .x, y = .y)) +
     geom_tile(aes(fill = count), 
               color = "white", lwd = 1, linetype = 1) +
-    scale_fill_continuous() + 
-    geom_text(aes(label = count), color = "grey", size = 6) + 
-    xlab('') +
-    ylab('') +
+    scale_fill_gradient(low = "#fff7fb", high = "#023858", limits = c(0, NA)) +
+    geom_text(aes(label = format(count, big.mark = ",")), color = "gray50", size = 6) + 
+    xlab('') + ylab('') +
     theme_minimal() + 
     theme(
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks = element_blank())+
-    guides(fill = guide_colourbar(barwidth = 1,
-                                  barheight = 10)) 
+    guides(fill = guide_colourbar(barwidth = 2,barheight = 20)) 
 })
 ```
 
-### Rate of Change
+### Rate of Change Day-over-Day
 ```{r rate_of_change}
-rate_of_change <- shiny::reactive({
+shiny::renderPlot({
   raw() %>%
     dplyr::mutate(date = base::as.Date(start_time)) %>% # format = c("%m/%d/%Y %h:%m%:%s %p")
     dplyr::group_by(date) %>%
@@ -240,10 +237,23 @@ rate_of_change <- shiny::reactive({
     dplyr::arrange(date, .by_group = TRUE) %>% 
     dplyr::mutate(rate_of_change = ((count-lag(count))/count)*100 ) %>% 
     dplyr::ungroup() %>% 
-      glimpse()
+    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly") %>% 
+    ggplot(aes(x = .x, y = .y)) +
+    geom_tile(aes(fill = rate_of_change), 
+              color = "white", lwd = 1, linetype = 1) +
+    scale_fill_gradient2(low = 'darkred', 
+                         mid = 'white', 
+                         high = 'darkgreen', 
+                         midpoint = 0, space = 'Lab') +
+    guides(fill = guide_colourbar(barwidth = 2, barheight = 20)) +
+    geom_text(aes(label = round(rate_of_change, 2)), color = "gray50", size = 6) + 
+    xlab('') + ylab('') +
+    theme_minimal() + 
+    theme(
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank())
 })
-
-shiny::renderPrint(head(rate_of_change()))
 ```
 
 
@@ -405,19 +415,21 @@ shiny::renderPlot({
            dplyr::right_join(all_districts, by = c('council_district_start', 'council_district_end')) %>% 
            arrange(council_district_start, council_district_end),
          aes(x = base::as.factor(council_district_end),
-             y = as.factor(council_district_start),
+             y = base::as.factor(council_district_start),
              fill = count)) +
     geom_tile(color = "white",
               lwd = 1.5,
               linetype = 1)+
-    geom_text(aes(label = count), color = "white", size = 4) +
+    scale_fill_gradient(high = "#132B43", low = "#56B1F7", limits = c(0, NA)) +
+    geom_text(aes(label =  ifelse(is.na(count), "", format(count, big.mark = ","))), 
+              color = "white", size = 4) +
     theme_minimal() +
     labs(title = "Number of Trips per Council District") +
     xlab("Trips that ended in the Council District") +
     ylab("Trips that started in the Council District") + 
     coord_fixed() +
     guides(fill = guide_colourbar(barwidth = 1,
-                                  barheight = 30)) 
+                                  barheight = 40)) 
 })
 ```
 
