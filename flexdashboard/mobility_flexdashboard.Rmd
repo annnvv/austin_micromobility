@@ -153,51 +153,58 @@ Column
 # https://cran.r-project.org/web/packages/sugrrants/vignettes/frame-calendar.html
 
 shiny::renderPlot({
-  raw() %>%
-    dplyr::group_by(date) %>%
-    dplyr::summarise(count = n()) %>%
-    dplyr::ungroup() %>% 
-    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly", week_start = 7) %>% 
-    ggplot(aes(x = .x, y = .y)) +
-    geom_tile(aes(fill = count), 
-              color = "white", lwd = 1, linetype = 1) +
-    scale_fill_gradient(low = "#fff7fb", high = "#023858", limits = c(0, NA)) +
-    geom_text(aes(label = format(count, big.mark = ",")), color = "gray50", size = 6) + 
-    xlab('') + ylab('') +
-    theme_minimal() + 
-    theme(
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank())+
-    guides(fill = guide_colourbar(barwidth = 2,barheight = 20)) 
+  sugrrants::prettify(
+    raw() %>%
+      dplyr::group_by(date) %>%
+      dplyr::summarise(count = n()) %>%
+      dplyr::ungroup() %>% 
+      sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly", week_start = 7) %>% 
+      ggplot(aes(x = .x, y = .y)) +
+      geom_tile(aes(fill = count), 
+                color = "white", lwd = 1, linetype = 1) +
+      scale_fill_gradient(low = "#fff7fb", high = "#023858", limits = c(0, NA)) +
+      guides(fill = guide_colourbar(barwidth = 2,barheight = 20)) + 
+      geom_text(aes(label = format(count, big.mark = ",")), color = "gray50", size = 6) + 
+      xlab('') + ylab('') +
+      theme_minimal() + 
+      theme(
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()),
+  abbr = FALSE, hjust = ifelse(input$duration == '1 week', 3, 0))
 })
 ```
 
 ### Rate of Change Day-over-Day
 ```{r rate_of_change}
 shiny::renderPlot({
-  raw() %>%
-    dplyr::group_by(date) %>%
-    dplyr::summarise(count = n()) %>%
-    dplyr::arrange(date, .by_group = TRUE) %>% 
-    dplyr::mutate(rate_of_change = ((count-lag(count))/count)*100 ) %>% 
-    dplyr::ungroup() %>% 
-    sugrrants::frame_calendar(x = 1, y = 1, date = date, calendar = "monthly", week_start = 7) %>% 
-    ggplot(aes(x = .x, y = .y)) +
-    geom_tile(aes(fill = rate_of_change), 
-              color = "white", lwd = 1, linetype = 1) +
-    scale_fill_gradient2(low = 'darkred', 
-                         mid = 'white', 
-                         high = 'darkgreen', 
-                         midpoint = 0, space = 'Lab') +
-    guides(fill = guide_colourbar(barwidth = 2, barheight = 20)) +
-    geom_text(aes(label = round(rate_of_change, 2)), color = "gray50", size = 6) + 
-    xlab('') + ylab('') +
-    theme_minimal() + 
-    theme(
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks = element_blank())
+  sugrrants::prettify(
+    raw() %>%
+      dplyr::group_by(date) %>%
+      dplyr::summarise(count = n()) %>%
+      dplyr::arrange(date, .by_group = TRUE) %>% 
+      dplyr::mutate(rate_of_change = ((count-lag(count))/count)*100 ) %>% 
+      dplyr::ungroup() %>% 
+      sugrrants::frame_calendar(x = 1, y = 1, date = date, 
+                                calendar = 'monthly', 
+                                week_start = 7) %>% 
+      ggplot(aes(x = .x, y = .y)) +
+      geom_tile(aes(fill = rate_of_change), 
+                color = "white", lwd = 1, linetype = 1) +
+      scale_fill_gradient2(low = 'darkred', 
+                           mid = 'white', 
+                           high = 'darkgreen', 
+                           midpoint = 0, space = 'Lab') +
+      guides(fill = guide_colourbar(barwidth = 2, barheight = 20)) +
+      geom_text(aes(label = round(rate_of_change, 2)), color = "gray50", size = 6) + 
+      xlab('') + ylab('') +
+      theme_minimal() + 
+      theme(
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()),
+  abbr = FALSE, hjust = ifelse(input$duration == '1 week', 3, 0)
+  )
 })
 ```
 
