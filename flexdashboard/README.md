@@ -1,6 +1,8 @@
 # Austin, TX Scooter Micromobility
 
-**Status**: IN PROGRESS
+**Status**: COMPLETE
+
+**Deployed App**: [here](https://annnvv.shinyapps.io/mobility_flexdashboard/)
 
 **Purpose**: I have always wanted to make a dashboard, this micromobility dataset provided an opportunity to do so. 
 Additionally, I wanted to create an interactive dashboard. Using flexdashboard with shiny reactive objects, I was able to do this. 
