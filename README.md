@@ -26,7 +26,7 @@ I also extended this analysis by creating parametrized reports (see 05_parametri
 2. Cleaned and exploring data using tidyverse functions
 3. Visualized data using the ggplot2 package
 4. Created r markdown reports using rmarkdown package
-5. Created an animal gif using maggick package
+5. Created an animated gif using maggick package
 
 <b>Lessons Learned</b>:
 1. The Austin micromobility data is quite messy (surprisingly so). A few examples of messiness:
